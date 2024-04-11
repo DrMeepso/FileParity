@@ -9,7 +9,9 @@ export class DirWatcher extends EventEmitter {
     folder = {
         name: '',
         files: [],
-        folders: []
+        folders: [],
+
+        parent: undefined // undefined means its the root folder
     } as Folder;
 
     watcher: chokidar.FSWatcher;
@@ -74,7 +76,9 @@ export class DirWatcher extends EventEmitter {
 
     async fileChanged(changeType: FileChangeType, path: string, mainFolder: Folder) {
 
-        let pathArray = path.split("\\");
+        // @ts-ignore
+        // why ReplaceAll isnt in the TS specs is beyond me
+        let pathArray = path.replaceAll("/","\\").split("\\");
         pathArray.shift(); // the first element is always the parent folder of the folder
         pathArray.shift(); // the second element is always the folder
 
@@ -83,7 +87,7 @@ export class DirWatcher extends EventEmitter {
             return;
         }
 
-        console.log(`Watcher > File changed: ${changeType} - ${path}`);
+        console.log(`Watcher > File changed: ${changeType} - ./${pathArray.join("/")}`);
 
         let fileName = pathArray.pop(); // the last element is always the file name
 
@@ -103,11 +107,17 @@ export class DirWatcher extends EventEmitter {
 
                 const stats = fs.statSync(path);
 
-                currentFolder.files.push({
+                let thisFile = {
                     name: fileName,
                     size: stats.size,
-                    hash: await getFileHash(path)
-                } as File);
+                    hash: await getFileHash(path),
+
+                    parent: currentFolder
+                } as File
+
+                currentFolder.files.push();
+
+                this.emit('fileChange', FileChangeType.CREATE, thisFile)
 
                 break;
 
@@ -120,12 +130,15 @@ export class DirWatcher extends EventEmitter {
                     throw new Error(`File ${fileName} not found!`);
                 }
 
+                this.emit('fileChange', FileChangeType.MODIFY, file)
+
                 break;
 
             case FileChangeType.DELETE:
 
                 const index = currentFolder.files.findIndex((f) => f.name === fileName);
                 if (index > -1) {
+                    this.emit('fileChange', FileChangeType.DELETE, currentFolder.files[index])
                     currentFolder.files.splice(index, 1);
                 } else {
                     throw new Error(`File ${fileName} not found!`);
@@ -148,7 +161,7 @@ export class DirWatcher extends EventEmitter {
             return;
         }
 
-        console.log(`Watcher > Folder changed: ${changeType} - ${path}`);
+        console.log(`Watcher > Folder changed: ${changeType} - ./${pathArray.join("/")}`);
 
         let folderName = pathArray.pop(); // the last element is always the folder name
 
@@ -174,11 +187,17 @@ export class DirWatcher extends EventEmitter {
                     return
                 }
 
-                currentFolder.folders.push({
+                let thisFolder = {
                     name: folderName,
                     files: [],
-                    folders: []
-                } as Folder);
+                    folders: [],
+
+                    parent: currentFolder
+                } as Folder
+
+                currentFolder.folders.push(thisFolder);
+
+                this.emit('folderChange', FolderChangeType.CREATE, thisFolder)
 
                 break;
 
@@ -186,6 +205,7 @@ export class DirWatcher extends EventEmitter {
 
                 const index = currentFolder.folders.findIndex((f) => f.name === folderName);
                 if (index > -1) {
+                    this.emit('folderChange', FolderChangeType.DELETE, currentFolder.folders[index])
                     currentFolder.folders.splice(index, 1);
                 } else {
                     throw new Error(`Folder ${folderName} not found!`);

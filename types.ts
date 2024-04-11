@@ -3,9 +3,9 @@ export type clientConfig = {
     // server connection details
     serverIP: string,
     serverPort: number,
-    serverPassword: string,
 
     username: string, // this clients username to the server
+    password: string, // this clients password to the server
 
     parityFolder: string, // must be a valid path
 
@@ -28,13 +28,17 @@ export type serverConfig = {
 export type Folder = {
     name: string,
     files: File[],
-    folders: Folder[]
+    folders: Folder[],
+
+    parent: Folder | undefined
 }
 
 export type File = {
     name: string,
     size: number,
-    hash: string
+    hash: string,
+
+    parent: Folder
 }
 
 export enum FileChangeType {
@@ -49,5 +53,19 @@ export enum FolderChangeType {
 
     CREATE = "CREATE",
     DELETE = "DELETE"
+
+}
+
+export type Message = {
+
+    type: string;
+
+}
+
+export interface LoginMessage extends Message {
+
+    type: 'login',
+    username: string,
+    password: string
 
 }

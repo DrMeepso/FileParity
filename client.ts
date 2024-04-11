@@ -1,7 +1,7 @@
 import ws from 'ws';
 import fs from 'fs';
 import chokidar from 'chokidar';
-import { clientConfig } from './types';
+import { LoginMessage, Message, clientConfig } from './types';
 
 enum clientState {
 
@@ -21,25 +21,42 @@ export function initClient(config: clientConfig) {
     }
 
     // connect to the server
-    const wsClient = new ws(`ws://${config.serverIP}:${config.serverPort}`, {
-        headers: {
-            password: config.serverPassword
-        }
-    });
+    const wsClient = new ws(`ws://${config.serverIP}:${config.serverPort}`);
 
     // when the connection is established
     wsClient.on('open', () => {
-        console.log('Connected to server');
+        console.log('Client:Net > Connected to server');
     });
 
     // when the connection is closed
     wsClient.on('close', () => {
-        console.log('Connection closed');
+        console.log('Client:Net > Connection closed');
     });
 
     // when the connection receives a message
-    wsClient.on('message', (message: string) => {
-        console.log('Received message:', message);
+    wsClient.on('message', (message: Buffer) => {
+        let msg = JSON.parse(message.toString()) as Message
+        console.log('Client:Net > Received message:', message.toString());
+
+        
+        switch (msg.type) {
+            case 'login':
+                wsClient.send(JSON.stringify({
+                    type: 'login',
+                    username: config.username,
+                    password: config.password
+                } as LoginMessage ));
+                break;
+            case 'loginSuccess':
+                wsClient.send(JSON.stringify({
+                    type: 'getFiles'
+                }));
+                break;
+            case 'fileStructure':
+                console.log('Client:Net > Received file structure');
+                break;
+        }
+
     });
 
 }

@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "ts-node index",
     "test": "start cmd /k ts-node index.ts -s ./test/server.json && timeout /t 1 /nobreak && start cmd /k ts-node index.ts -c ./test/client.json"
   },
   "keywords": [],
@@ -12,6 +13,7 @@
   "dependencies": {
     "@types/node": "^20.12.7",
     "chokidar": "^3.6.0",
+    "ts-node": "^10.9.2",
     "ws": "^8.16.0"
   },
   "devDependencies": {

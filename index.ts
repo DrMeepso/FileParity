@@ -8,16 +8,17 @@ function readJSON(path: string) {
 
 // read the program arguments
 const args = process.argv.slice(2);
-// if -c is present read the next argument as the client config file
-if (args.includes('-c')) {
-    const clientConfig = readJSON(args[args.indexOf('-c') + 1]);
-    initClient(clientConfig);
-}
 
 // if -s is present read the next argument as the server config file
 if (args.includes('-s')) {
     const serverConfig = readJSON(args[args.indexOf('-s') + 1]);
     initServer(serverConfig);
+}
+
+// if -c is present read the next argument as the client config file
+if (args.includes('-c')) {
+    const clientConfig = readJSON(args[args.indexOf('-c') + 1]);
+    initClient(clientConfig);
 }
 
 // if no arguments are present, print the usage

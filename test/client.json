@@ -2,9 +2,9 @@
 
     "serverIP": "localhost",
     "serverPort" : "3000",
-    "serverPassword": "password",
 
-    "username": "testClient1",
+    "username": "client",
+    "password": "password",
 
     "parityFolder": "./test/client"
 
