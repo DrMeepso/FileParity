@@ -96,4 +96,3 @@ export async function initServer(config: serverConfig, auth: (username: string, 
         console.log('Server:Net > Server stopped');
     });
 
-}

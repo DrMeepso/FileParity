@@ -40,7 +40,7 @@ export function initClient(config: clientConfig) {
 
 }
 
-function HandelMessage(message: string, wsClient: ws, config: clientConfig) {
+async function HandelMessage(message: string, wsClient: ws, config: clientConfig) {
 
     let msg = JSON.parse(message) as Message
     //console.log('Client:Net > Received message:', message.toString());
@@ -50,8 +50,10 @@ function HandelMessage(message: string, wsClient: ws, config: clientConfig) {
             console.error('Client:Net > Received error:', (msg as ErrorMesssage).message);
             if ((msg as ErrorMesssage).fatial) {
                 console.log('Client:Net > Server sent a fatial error, closing connection');
+                wsClient.close();
             }
             break;
+
         case 'login':
             wsClient.send(JSON.stringify({
                 type: 'login',
@@ -59,12 +61,14 @@ function HandelMessage(message: string, wsClient: ws, config: clientConfig) {
                 password: config.password
             } as LoginMessage ));
             break;
+
         case 'loginSuccess':
             console.log('Client:Net > Logged in!');
             wsClient.send(JSON.stringify({
                 type: 'getFiles'
             } as Message));
             break;
+
         case 'fileStructure':
             console.log('Client:Net > Received file structure');
             let FSMessage = msg as FileStructureMessage;
@@ -73,7 +77,4 @@ function HandelMessage(message: string, wsClient: ws, config: clientConfig) {
 
             break;
     }
-
-
-
-}
+} 
