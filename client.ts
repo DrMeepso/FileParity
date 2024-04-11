@@ -1,7 +1,7 @@
 import ws from 'ws';
 import fs from 'fs';
 import chokidar from 'chokidar';
-import { LoginMessage, Message, clientConfig } from './types';
+import { ErrorMesssage, FileStructureMessage, LoginMessage, Message, clientConfig } from './types';
 
 enum clientState {
 
@@ -35,28 +35,45 @@ export function initClient(config: clientConfig) {
 
     // when the connection receives a message
     wsClient.on('message', (message: Buffer) => {
-        let msg = JSON.parse(message.toString()) as Message
-        console.log('Client:Net > Received message:', message.toString());
-
-        
-        switch (msg.type) {
-            case 'login':
-                wsClient.send(JSON.stringify({
-                    type: 'login',
-                    username: config.username,
-                    password: config.password
-                } as LoginMessage ));
-                break;
-            case 'loginSuccess':
-                wsClient.send(JSON.stringify({
-                    type: 'getFiles'
-                }));
-                break;
-            case 'fileStructure':
-                console.log('Client:Net > Received file structure');
-                break;
-        }
-
+        HandelMessage(message.toString(), wsClient, config);
     });
+
+}
+
+function HandelMessage(message: string, wsClient: ws, config: clientConfig) {
+
+    let msg = JSON.parse(message) as Message
+    //console.log('Client:Net > Received message:', message.toString());
+
+    switch (msg.type) {
+        case 'error':
+            console.error('Client:Net > Received error:', (msg as ErrorMesssage).message);
+            if ((msg as ErrorMesssage).fatial) {
+                console.log('Client:Net > Server sent a fatial error, closing connection');
+            }
+            break;
+        case 'login':
+            wsClient.send(JSON.stringify({
+                type: 'login',
+                username: config.username,
+                password: config.password
+            } as LoginMessage ));
+            break;
+        case 'loginSuccess':
+            console.log('Client:Net > Logged in!');
+            wsClient.send(JSON.stringify({
+                type: 'getFiles'
+            } as Message));
+            break;
+        case 'fileStructure':
+            console.log('Client:Net > Received file structure');
+            let FSMessage = msg as FileStructureMessage;
+
+            let serverFiles = FSMessage.folder
+
+            break;
+    }
+
+
 
 }

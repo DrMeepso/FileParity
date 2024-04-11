@@ -12,7 +12,7 @@ const args = process.argv.slice(2);
 // if -s is present read the next argument as the server config file
 if (args.includes('-s')) {
     const serverConfig = readJSON(args[args.indexOf('-s') + 1]);
-    initServer(serverConfig);
+    initServer(serverConfig, (u,p) => {return false});
 }
 
 // if -c is present read the next argument as the client config file

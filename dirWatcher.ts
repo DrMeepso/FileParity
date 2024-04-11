@@ -21,6 +21,8 @@ export class DirWatcher extends EventEmitter {
 
     watcherPath: string;
 
+    ready: boolean = false;
+
     constructor(path: string) {
         super();
 
@@ -70,6 +72,9 @@ export class DirWatcher extends EventEmitter {
             if (nullF) {
                 this.folder.folders.splice(this.folder.folders.indexOf(nullF), 1);
             }
+
+            this.ready = true;
+            this.emit('ready', this.folder);
         })
 
     }
@@ -97,7 +102,12 @@ export class DirWatcher extends EventEmitter {
             if (f) {
                 currentFolder = f;
             } else {
-                throw new Error(`Folder ${folder} not found!`);
+                if (changeType == FileChangeType.DELETE) {
+                    return; // the entire folder has been deleted
+                } else {
+                    throw new Error(`Folder ${folder} not found!`);
+                    // maybe we should create the folder?
+                }
             }
         }
 
@@ -115,7 +125,7 @@ export class DirWatcher extends EventEmitter {
                     parent: currentFolder
                 } as File
 
-                currentFolder.files.push();
+                currentFolder.files.push(thisFile);
 
                 this.emit('fileChange', FileChangeType.CREATE, thisFile)
 
@@ -152,7 +162,8 @@ export class DirWatcher extends EventEmitter {
 
     async folderChanged(changeType: FolderChangeType, path: string, mainFolder: Folder) {
 
-        let pathArray = path.split("\\");
+        // @ts-ignore
+        let pathArray = path.replaceAll("/", "\\").split("\\")
         pathArray.shift(); // the first element is always the parent folder of the folder
         pathArray.shift(); // the second element is always the folder
 
@@ -278,6 +289,24 @@ export class DirWatcher extends EventEmitter {
         setInterval(async () => {
             this.ignoreList.splice(this.ignoreList.indexOf(path), 1);
         }, 150)
+
+    }
+
+    async getFileStructure(): Promise<Folder> {
+
+        // clone the folder and make all parents undefined to it can be serialized
+        let firstMap = (folder: Folder) => {
+            let clone = {...folder};
+            clone.parent = undefined;
+            clone.folders = clone.folders.map(firstMap);
+            clone.files = clone.files.map((f) => {
+                f.parent = undefined;
+                return f;
+            })
+            return clone;
+        }
+
+        return firstMap(this.folder);
 
     }
 

@@ -1,10 +1,9 @@
 import ws from 'ws';
 import fs, { watch } from 'fs';
-import { serverConfig, Folder, File, FileChangeType, FolderChangeType, Message } from './types';
+import { serverConfig, Folder, File, FileChangeType, FolderChangeType, Message, LoginMessage, ErrorMesssage, FileStructureMessage } from './types';
 import { DirWatcher } from './dirWatcher';
-import { json } from 'stream/consumers';
 
-export async function initServer(config: serverConfig) {
+export async function initServer(config: serverConfig, auth: (username: string, password: string) => boolean) {
 
     // make sure the parity folder is valid
     if (!fs.existsSync(config.parityFolder)) {
@@ -22,7 +21,7 @@ export async function initServer(config: serverConfig) {
     });
 
     // when a client connects
-    wsServer.on('connection', (wsClient) => {
+    wsServer.on('connection', async (wsClient) => {
         console.log('Server:Net > Client connected, Waiting for login');
 
         // inform the client we are ready for them to login
@@ -31,13 +30,58 @@ export async function initServer(config: serverConfig) {
         } as Message))
 
         // when the client sends a message
-        wsClient.on('message', (message: Buffer) => {
-            console.log('Server:Net > Received message:', message.toString());
+        wsClient.on('message', async (message: Buffer) => {
+            let msg = JSON.parse(message.toString()) as Message;
+
+            switch (msg.type) {
+
+                case 'login':
+                    let loginMSG = msg as LoginMessage;
+                    if (auth(loginMSG.username, loginMSG.password)) {
+                        console.log('Server:Net > Client logged in');
+                        wsClient.send(JSON.stringify({
+                            type: 'loginSuccess'
+                        } as Message));
+                    } else {
+                        console.log('Server:Net > Client login failed');
+
+                        wsClient.send(JSON.stringify({
+                            type: 'error',
+                            message: 'Login failed, Credentials incorrect',
+                            fatial: true
+                        } as ErrorMesssage))
+
+                        wsClient.close();
+                    }
+                    break;
+
+                case 'getFiles':
+                    console.log('Server:Net > Sending file structure');
+                    
+                    if (!watcher.ready) {
+
+                        console.log('Server:FS > Defering - Waiting for watcher to be ready');
+
+                        await new Promise((resolve) => {
+                            watcher.on('ready', () => {
+                                resolve(null);
+                            })
+                        });
+                    }
+
+                    wsClient.send(JSON.stringify({
+                        type: 'fileStructure',
+                        folder: await watcher.getFileStructure()
+                    } as FileStructureMessage));
+                    break;
+
+            }
+
         });
 
         // when the client disconnects
         wsClient.on('close', () => {
-            console.log('Client disconnected');
+            console.log('Server:Net > Client disconnected');
         });
 
     });
@@ -52,11 +96,4 @@ export async function initServer(config: serverConfig) {
         console.log('Server:Net > Server stopped');
     });
 
-}
-
-function logFS(folder: Folder)
-{
-    setTimeout(async () => {
-        console.log(JSON.stringify(folder, null, 2));
-    }, 100)
 }

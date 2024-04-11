@@ -1,3 +1,5 @@
+import exp from "constants"
+
 export type clientConfig = {
 
     // server connection details
@@ -38,7 +40,7 @@ export type File = {
     size: number,
     hash: string,
 
-    parent: Folder
+    parent: Folder | undefined
 }
 
 export enum FileChangeType {
@@ -67,5 +69,20 @@ export interface LoginMessage extends Message {
     type: 'login',
     username: string,
     password: string
+
+}
+
+export interface ErrorMesssage extends Message {
+
+    type: 'error',
+    message: string,
+    fatial?: boolean
+
+}
+
+export interface FileStructureMessage extends Message {
+
+    type: 'fileStructure',
+    folder: Folder
 
 }
