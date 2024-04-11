@@ -1,0 +1,11 @@
+{
+
+    "serverIP": "localhost",
+    "serverPort" : "3000",
+    "serverPassword": "password",
+
+    "username": "testClient1",
+
+    "parityFolder": "./test/client"
+
+}

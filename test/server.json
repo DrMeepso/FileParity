@@ -1,0 +1,10 @@
+{
+
+    "serverPort": 3000,
+    "serverPassword": "password",
+
+    "clientTimeout": 30000,
+
+    "parityFolder": "./test/server"
+
+}
