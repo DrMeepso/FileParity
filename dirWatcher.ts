@@ -4,7 +4,6 @@ import chokidar from "chokidar";
 import { Folder, File, FileChangeType, FolderChangeType } from './types';
 import { getFileHash } from "./utils";
 
-
 export class DirWatcher extends EventEmitter {
 
     folder = {
@@ -135,7 +134,7 @@ export class DirWatcher extends EventEmitter {
                 break;
 
         }
-        
+
     }
 
     async folderChanged(changeType: FolderChangeType, path: string, mainFolder: Folder) {
