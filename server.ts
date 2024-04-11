@@ -95,4 +95,4 @@ export async function initServer(config: serverConfig, auth: (username: string, 
     wsServer.on('close', () => {
         console.log('Server:Net > Server stopped');
     });
-
+}
