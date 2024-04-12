@@ -1,8 +1,9 @@
 import ws from 'ws';
 import fs from 'fs';
-import { ErrorMesssage, FileStructureMessage, LoginMessage, Message, ServerLoginMessage, clientConfig } from './types';
+import { ErrorMesssage, FileStructureMessage, Folder, LoginMessage, Message, ServerLoginMessage, clientConfig } from './types';
 import { DirWatcher } from './dirWatcher';
 import crypto from 'crypto';
+import { run } from 'node:test';
 
 enum clientState {
 
@@ -105,6 +106,10 @@ export class Client {
 
                 console.log('Client:FS > Comparing file structures');
 
+                this.addParents(serverFiles)
+
+                this.compareFileStructures(serverFiles);
+
                 break;
         }
     }
@@ -124,6 +129,66 @@ export class Client {
         } else {
             console.error('Client:Net > Cannot send message, server public key not set');
             return;
+        }
+
+    }
+
+    async compareFileStructures(serverFiles: Folder) {
+
+        console.log('Client:FS > Comparing file structures');
+
+        let MissingFiles: string[] = [];
+        let ModifiedFiles: string[] = [];
+        let MissingFolders: string[] = [];
+
+        const watcher = this.watcher
+
+        // compare folder
+        async function runFolder(cf: Folder)
+        {
+            for (let cFile of cf.files) {
+                let path = await DirWatcher.getPath(cFile);
+                console.log('Client:FS > Checking file:', path);
+                let clientFile = await watcher?.getFile(path);
+                if (clientFile == undefined) {
+                    MissingFiles.push(path);
+                    console.log('Client:FS > Missing file:', path);
+                } else {
+                    if (clientFile?.hash != cFile.hash) {
+                        ModifiedFiles.push(path);
+                    }
+                }
+            }
+
+            for (let cFolder of cf.folders) {
+                let path = await DirWatcher.getFoldePath(cFolder);
+                console.log('Client:FS > Checking folder:', path);
+                let clientFolder = await watcher?.getFolder(path);
+                if (clientFolder == undefined) {
+                    MissingFolders.push(path);
+                    console.log('Client:FS > Missing folder:', path);
+                }
+                await runFolder(cFolder);
+            }
+        }
+
+        await runFolder(serverFiles);
+
+        console.log('Client:FS > Missing files:', MissingFiles);
+        console.log('Client:FS > Modified files:', ModifiedFiles);
+        console.log('Client:FS > Missing folders:', MissingFolders);
+
+    }
+
+    addParents(folder: Folder) {
+
+        for (let file of folder.files) {
+            file.parent = folder;
+        }
+
+        for (let subFolder of folder.folders) {
+            subFolder.parent = folder;
+            this.addParents(subFolder);
         }
 
     }

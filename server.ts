@@ -13,6 +13,8 @@ class ServerClient {
 
     WSClient: ws;
 
+    hasLoggedIn: boolean = false;
+
     constructor(wsClient: ws, username: string = '') {
 
         const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
@@ -94,6 +96,17 @@ export async function initServer(config: serverConfig, auth: (username: string, 
 
             let msg = thisClient.decrypt(message) as Message;
 
+            if (msg.type != 'login' && !thisClient.hasLoggedIn) {
+                console.log('Server:Net > Client sent a message before logging in');
+                wsClient.send(JSON.stringify({
+                    type: 'error',
+                    message: 'You must login before sending messages',
+                    fatial: true
+                } as ErrorMesssage));
+                wsClient.close();
+                return;
+            }
+
             switch (msg.type) {
 
                 case 'login':
@@ -101,6 +114,7 @@ export async function initServer(config: serverConfig, auth: (username: string, 
                     if (auth(loginMSG.username, loginMSG.password)) {
                         console.log('Server:Net > Client logged in as ' + loginMSG.username);
                         thisClient.Username = loginMSG.username;
+                        thisClient.hasLoggedIn = true;
                         wsClient.send(JSON.stringify({
                             type: 'loginSuccess'
                         } as Message));

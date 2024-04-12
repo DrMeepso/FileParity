@@ -310,4 +310,71 @@ export class DirWatcher extends EventEmitter {
 
     }
 
+    // get the file from the folder array based on relative path
+    async getFile(path: string) : Promise<File | undefined>
+    {
+        let pathArray = path.split("/");
+        let currentFolder = this.folder;
+
+        let fileName = pathArray.pop();
+
+        for (const folder of pathArray) {
+            let f = currentFolder.folders.find((f) => f.name === folder);
+            if (f) {
+                currentFolder = f;
+            } else {
+                return undefined;
+            }
+        }
+
+        let file = currentFolder.files.find((f) => f.name === fileName);
+
+        return file;
+    }
+
+    static async getPath(file: File) : Promise<string>
+    {
+        let path = file.name;
+        let currentFolder = file.parent;
+
+        while (currentFolder) {
+            if (currentFolder.parent == undefined) break; // stop at the root folder (undefined parent
+            path = currentFolder.name + "/" + path;
+            currentFolder = currentFolder.parent;
+        }
+
+        return path;
+    }
+
+    async getFolder(path: string) : Promise<Folder | undefined>
+    {
+        let pathArray = path.split("/");
+        let currentFolder = this.folder;
+
+        for (const folder of pathArray) {
+            let f = currentFolder.folders.find((f) => f.name === folder);
+            if (f) {
+                currentFolder = f;
+            } else {
+                return undefined;
+            }
+        }
+
+        return currentFolder;
+    }
+
+    static async getFoldePath(folder: Folder) : Promise<string>
+    {
+        let path = folder.name;
+        let currentFolder = folder.parent;
+
+        while (currentFolder) {
+            if (currentFolder.parent == undefined) break; // stop at the root folder (undefined parent
+            path = currentFolder.name + "/" + path;
+            currentFolder = currentFolder.parent;
+        }
+
+        return path;
+    }
+
 }
