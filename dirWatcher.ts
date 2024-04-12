@@ -83,7 +83,7 @@ export class DirWatcher extends EventEmitter {
 
         // @ts-ignore
         // why ReplaceAll isnt in the TS specs is beyond me
-        let pathArray = path.replaceAll("/","\\").split("\\");
+        let pathArray = path.replaceAll("/", "\\").split("\\");
         pathArray.shift(); // the first element is always the parent folder of the folder
         pathArray.shift(); // the second element is always the folder
 
@@ -229,7 +229,7 @@ export class DirWatcher extends EventEmitter {
     }
 
     async writeFile(path: string, data: string) {
-    
+
         this.ignoreList.push(path);
 
         try {
@@ -245,7 +245,7 @@ export class DirWatcher extends EventEmitter {
     }
 
     async deleteFile(path: string) {
-    
+
         this.ignoreList.push(path);
 
         try {
@@ -253,7 +253,7 @@ export class DirWatcher extends EventEmitter {
         } catch (e) {
             console.error("Watcher:FS - Error > " + String(e));
         }
-        
+
         setInterval(async () => {
             this.ignoreList.splice(this.ignoreList.indexOf(path), 1);
         }, 150)
@@ -261,7 +261,7 @@ export class DirWatcher extends EventEmitter {
     }
 
     async createFolder(path: string) {
-    
+
         this.ignoreList.push(path);
 
         try {
@@ -277,7 +277,7 @@ export class DirWatcher extends EventEmitter {
     }
 
     async deleteFolder(path: string) {
-    
+
         this.ignoreList.push(path);
 
         try {
@@ -296,7 +296,7 @@ export class DirWatcher extends EventEmitter {
 
         // clone the folder and make all parents undefined to it can be serialized
         let firstMap = (folder: Folder) => {
-            let clone = {...folder};
+            let clone = { ...folder };
             clone.parent = undefined;
             clone.folders = clone.folders.map(firstMap);
             clone.files = clone.files.map((f) => {
@@ -311,8 +311,7 @@ export class DirWatcher extends EventEmitter {
     }
 
     // get the file from the folder array based on relative path
-    async getFile(path: string) : Promise<File | undefined>
-    {
+    async getFile(path: string): Promise<File | undefined> {
         let pathArray = path.split("/");
         let currentFolder = this.folder;
 
@@ -332,8 +331,7 @@ export class DirWatcher extends EventEmitter {
         return file;
     }
 
-    static async getPath(file: File) : Promise<string>
-    {
+    static async getPath(file: File): Promise<string> {
         let path = file.name;
         let currentFolder = file.parent;
 
@@ -346,8 +344,7 @@ export class DirWatcher extends EventEmitter {
         return path;
     }
 
-    async getFolder(path: string) : Promise<Folder | undefined>
-    {
+    async getFolder(path: string): Promise<Folder | undefined> {
         let pathArray = path.split("/");
         let currentFolder = this.folder;
 
@@ -363,8 +360,7 @@ export class DirWatcher extends EventEmitter {
         return currentFolder;
     }
 
-    static async getFoldePath(folder: Folder) : Promise<string>
-    {
+    static async getFoldePath(folder: Folder): Promise<string> {
         let path = folder.name;
         let currentFolder = folder.parent;
 
@@ -375,6 +371,59 @@ export class DirWatcher extends EventEmitter {
         }
 
         return path;
+    }
+
+}
+
+export class DummbyWatcher {
+
+    folder = {
+        name: '',
+        files: [],
+        folders: [],
+
+        parent: undefined // undefined means its the root folder
+    } as Folder;
+
+    constructor(folder: Folder) {
+        this.folder = folder;
+    }
+
+    async getFolder(path: string): Promise<Folder | undefined> {
+        let pathArray = path.split("/");
+        let currentFolder = this.folder;
+
+        for (const folder of pathArray) {
+            let f = currentFolder.folders.find((f) => f.name === folder);
+            if (f) {
+                currentFolder = f;
+            } else {
+                return undefined;
+            }
+        }
+
+        return currentFolder;
+    }
+
+    // get the file from the folder array based on relative path
+    async getFile(path: string): Promise<File | undefined> {
+        let pathArray = path.split("/");
+        let currentFolder = this.folder;
+
+        let fileName = pathArray.pop();
+
+        for (const folder of pathArray) {
+            let f = currentFolder.folders.find((f) => f.name === folder);
+            if (f) {
+                currentFolder = f;
+            } else {
+                return undefined;
+            }
+        }
+
+        let file = currentFolder.files.find((f) => f.name === fileName);
+
+        return file;
     }
 
 }

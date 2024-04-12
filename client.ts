@@ -1,7 +1,7 @@
 import ws from 'ws';
 import fs from 'fs';
 import { ErrorMesssage, FileStructureMessage, Folder, LoginMessage, Message, ServerLoginMessage, clientConfig } from './types';
-import { DirWatcher } from './dirWatcher';
+import { DirWatcher, DummbyWatcher } from './dirWatcher';
 import crypto from 'crypto';
 import { run } from 'node:test';
 
@@ -141,20 +141,23 @@ export class Client {
         let ModifiedFiles: string[] = [];
         let MissingFolders: string[] = [];
 
+        let ExtraFiles: string[] = [];
+        let ExtraFolders: string[] = [];
+
         const watcher = this.watcher
 
         // compare folder
-        async function runFolder(cf: Folder)
+        async function runFolderS(cf: Folder)
         {
             for (let cFile of cf.files) {
                 let path = await DirWatcher.getPath(cFile);
-                console.log('Client:FS > Checking file:', path);
                 let clientFile = await watcher?.getFile(path);
                 if (clientFile == undefined) {
                     MissingFiles.push(path);
                     console.log('Client:FS > Missing file:', path);
                 } else {
                     if (clientFile?.hash != cFile.hash) {
+                        console.log('Client:FS > Modified file:', path);
                         ModifiedFiles.push(path);
                     }
                 }
@@ -162,21 +165,49 @@ export class Client {
 
             for (let cFolder of cf.folders) {
                 let path = await DirWatcher.getFoldePath(cFolder);
-                console.log('Client:FS > Checking folder:', path);
                 let clientFolder = await watcher?.getFolder(path);
                 if (clientFolder == undefined) {
                     MissingFolders.push(path);
                     console.log('Client:FS > Missing folder:', path);
                 }
-                await runFolder(cFolder);
+                await runFolderS(cFolder);
             }
         }
 
-        await runFolder(serverFiles);
+        await runFolderS(serverFiles);
+
+        let serverWatcher = new DummbyWatcher(serverFiles);
+
+        async function runFolderC(cf: Folder) {
+
+            for (let cFile of cf.files) {
+                let path = await DirWatcher.getPath(cFile);
+                let clientFile = await serverWatcher?.getFile(path);
+                if (clientFile == undefined) {
+                    ExtraFiles.push(path);
+                    console.log('Client:FS > Extra file:', path);
+                }
+            }
+
+            for (let cFolder of cf.folders) {
+                let path = await DirWatcher.getFoldePath(cFolder);
+                let clientFolder = await serverWatcher?.getFolder(path);
+                if (clientFolder == undefined) {
+                    ExtraFolders.push(path);
+                    console.log('Client:FS > Extra folder:', path);
+                }
+                await runFolderC(cFolder);
+            }
+        }
+
+        await runFolderC(watcher?.folder as Folder);
 
         console.log('Client:FS > Missing files:', MissingFiles);
         console.log('Client:FS > Modified files:', ModifiedFiles);
         console.log('Client:FS > Missing folders:', MissingFolders);
+
+        console.log('Client:FS > Extra files:', ExtraFiles);
+        console.log('Client:FS > Extra folders:', ExtraFolders);
 
     }
 
