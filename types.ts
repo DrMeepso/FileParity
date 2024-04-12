@@ -64,6 +64,13 @@ export type Message = {
 
 }
 
+export interface ServerLoginMessage extends Message {
+
+    type: 'login',
+    publicKey: string
+
+}
+
 export interface LoginMessage extends Message {
 
     type: 'login',

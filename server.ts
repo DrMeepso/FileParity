@@ -1,7 +1,64 @@
 import ws from 'ws';
 import fs, { watch } from 'fs';
-import { serverConfig, Folder, File, FileChangeType, FolderChangeType, Message, LoginMessage, ErrorMesssage, FileStructureMessage } from './types';
+import { serverConfig, Folder, File, FileChangeType, FolderChangeType, Message, LoginMessage, ErrorMesssage, FileStructureMessage, ServerLoginMessage } from './types';
 import { DirWatcher } from './dirWatcher';
+import crypto from 'crypto';
+
+class ServerClient {
+
+    RSAPublicKey: string;
+    RSAPrivateKey: string;
+
+    Username: string = "Unkown"
+
+    WSClient: ws;
+
+    constructor(wsClient: ws, username: string = '') {
+
+        const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+            modulusLength: 2048
+        });
+
+        this.RSAPublicKey = publicKey.export({
+            type: 'spki',
+            format: 'pem'
+        }).toString();
+
+        this.RSAPrivateKey = privateKey.export({
+            type: 'pkcs8',
+            format: 'pem'
+        }).toString();
+
+        this.WSClient = wsClient;
+        this.Username = username;
+
+        console.log(`Server:${this.Username}:RSA > Generated RSA key pair`);
+
+    }
+
+    send(msg: Message) {
+
+        // encrypt the message
+        let encrypted = crypto.privateEncrypt(this.RSAPrivateKey, Buffer.from(JSON.stringify(msg)));
+
+        this.WSClient.send(encrypted);
+    }
+
+    decrypt(msg: Buffer) {
+        try {
+            return JSON.parse(crypto.privateDecrypt(this.RSAPrivateKey, msg).toString());
+        } catch (e) {
+            console.error('Server:Net > Failed to decrypt message');
+            this.send({
+                type: 'error',
+                message: 'Failed to decrypt message, are you sure you are using the correct key?',
+                fatial: true
+            } as ErrorMesssage);
+            return null;
+        }   
+    }
+
+}
 
 export async function initServer(config: serverConfig, auth: (username: string, password: string) => boolean) {
 
@@ -24,21 +81,26 @@ export async function initServer(config: serverConfig, auth: (username: string, 
     wsServer.on('connection', async (wsClient) => {
         console.log('Server:Net > Client connected, Waiting for login');
 
+        const thisClient = new ServerClient(wsClient, 'Unkown');
+
         // inform the client we are ready for them to login
         wsClient.send(JSON.stringify({
-            type: 'login'
-        } as Message))
+            type: 'login',
+            publicKey: thisClient.RSAPublicKey
+        } as ServerLoginMessage))
 
         // when the client sends a message
         wsClient.on('message', async (message: Buffer) => {
-            let msg = JSON.parse(message.toString()) as Message;
+
+            let msg = thisClient.decrypt(message) as Message;
 
             switch (msg.type) {
 
                 case 'login':
                     let loginMSG = msg as LoginMessage;
                     if (auth(loginMSG.username, loginMSG.password)) {
-                        console.log('Server:Net > Client logged in');
+                        console.log('Server:Net > Client logged in as ' + loginMSG.username);
+                        thisClient.Username = loginMSG.username;
                         wsClient.send(JSON.stringify({
                             type: 'loginSuccess'
                         } as Message));
